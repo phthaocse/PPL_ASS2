@@ -90,7 +90,7 @@ class ASTGeneration(MPVisitor):
             return FloatLiteral(float(ctx.FLOATLIT()))
         elif self.visitChild(ctx) == ctx.BOOL_LIT():
             return BooleanLiteral(bool(ctx.BOOL_LIT()))
-        else 
+        else: 
             return StringLiteral(string(ctx.STRING_LIT()))
 
     def visitPrimitive_types(self, ctx:MPParser.Primitive_typesContext):
@@ -101,7 +101,7 @@ class ASTGeneration(MPVisitor):
             return IntType()
         elif self.visitChild(ctx) == ctx.REAL()
             return FloatType()
-        else
+        else:
             return StringType()
 
     def visitCompound_type(self, ctx:MPParser.Compound_typeContext):    
@@ -122,7 +122,7 @@ class ASTGeneration(MPVisitor):
             return self.visitLiterals(ctx.literals())
         elif self.visitChild(ctx) == ctx.ID():
             return Id(ctx.ID().getText())
-        else 
+        else: 
             return self.visitFuncall(ctx.funcall())
 
     def visitFuncall(self, ctx:MPParser.FuncallContext):
@@ -142,7 +142,7 @@ class ASTGeneration(MPVisitor):
     #compoundStatement: BEGIN (lis_statements)? END 
         return self.visit(ctx.lis_statements())
 
-    def visitStatements(self, ctx:MPParser.StatementsContext):
+    
 """ statements
     : assignstatement
     | ifstatement
@@ -155,9 +155,28 @@ class ASTGeneration(MPVisitor):
     | withstatements
     | callstatements
     ;"""
+    def visitStatements(self, ctx:MPParser.StatementsContext):
         return self.visitChild(ctx)
-    
 
+    def visitAssignstatement(self, ctx:MPParser.AssignstatementContext):
+    #assignstatement: (variable ASSIGN)+ expression SEMI 
+        var_list = [self.visit(x) for x in ctx.variable()]
+        return [Assign(x,self.visit(ctx.expression())) for x in var_list]
+
+    def visitVariable(self, ctx:MPParser.VariableContext):
+    #variable: ID | arrayelement
+        if self.visitChild(ctx) == ctx.ID():
+            return Id(ctx.ID().getText())
+        else:
+            self.visitChild(ctx)
+
+    def visitIfstatement(self, ctx:MPParser.IfstatementContext):
+    #ifstatement: IF expression THEN statements (: ELSE statements)? 
+        return If(self.visit(ctx.expression()),self.visit(ctx.statements()),self.visit(ctx.statements()))
+
+    def visitWhilestatement(self, ctx:MPParser.WhilestatementContext):
+    #whilestatement: WHILE expression DO  statements 
+        return While(self.visit(ctx.expression()),self.visit(ctx.statements()))
 
     def visitBody(self,ctx:MPParser.BodyContext):
         return [],[self.visit(ctx.stmt())] if ctx.stmt() else []
