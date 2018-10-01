@@ -178,19 +178,48 @@ class ASTGeneration(MPVisitor):
     #whilestatement: WHILE expression DO  statements 
         return While(self.visit(ctx.expression()),self.visit(ctx.statements()))
 
-    def visitBody(self,ctx:MPParser.BodyContext):
-        return [],[self.visit(ctx.stmt())] if ctx.stmt() else []
-  
-    def visitStmt(self,ctx:MPParser.StmtContext):
-        return self.visit(ctx.funcall())
+    def visitForstatement(self, ctx:MPParser.ForstatementContext):
+    #forstatement: FOR ID ASSIGN initialExp (TO | DOWNTO) finalExp DO statements 
+        if ctx.getChild(5) == TO:
+            up = True
+        else:
+            up = False
+        return For(Id(ctx.ID().getText()),self.visit(ctx.initialExp()),self.visit(ctx.finalExp()),up,self.visit(ctx.statements()))        
 
-    def visitFuncall(self,ctx:MPParser.FuncallContext):
-        return CallStmt(Id(ctx.ID().getText()),[self.visit(ctx.exp())] if ctx.exp() else [])
+    def visitInitialExp(self, ctx:MPParser.InitialExpContext):
+    #initialExp: expression
+        return self.visitChild(ctx)
 
-    def visitExp(self,ctx:MPParser.ExpContext):
-        return IntLiteral(int(ctx.INTLIT().getText()))
+    def visitFinalExp(self, ctx:MPParser.FinalExpContext):
+        return self.visitChild(ctx)
 
-    def visitMtype(self,ctx:MPParser.MtypeContext):
-        return IntType()
+    def visitBreakstatement(self, ctx:MPParser.BreakstatementContext):
+    #breakstatement: BREAK SEMI 
+        return Break()
+
+    def visitContinuestatement(self, ctx:MPParser.ContinuestatementContext):
+    #continuestatement: CONTINUE SEMI 
+        return Continue()
+
+    def visitReturnstatement(self, ctx:MPParser.ReturnstatementContext):
+    #returnstatement: RETURN expression? SEMI 
+        return Return(self.visit(ctx.expression()))
         
+    def visitLis_statements(self, ctx:MPParser.Lis_statementsContext):
+    #lis_statements: statements lis_statements | statements ;
+        result = [] #lis_stmt
+        while ctx.getChildCount() != 1
+            result.insert(len(result),ctx.statements())
+            ctx = ctx.lis_statements()
+        result.insert(len(result),ctx.statements())
+        return result
+
+    def visitWithstatements(self, ctx:MPParser.WithstatementsContext):
+    #withstatements: WITH varlist_dec DO statements
+        return With(self.visit(ctx.varlist_dec()),self.visit(ctx.statements()))
+
+    def visitCallstatements(self, ctx:MPParser.CallstatementsContext):
+    #callstatements: funcall SEMI 
+        ctx = self.visit(ctx.funcall())
+        return CallStmt(Id(ctx.ID().getText()),self.visit(ctx.listexp()))
 
