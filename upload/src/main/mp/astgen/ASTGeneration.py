@@ -83,7 +83,7 @@ class ASTGeneration(MPVisitor):
     | BOOL_LIT
     | STRING_LIT
     ;
-    """
+`  """
         if self.visitChild(ctx) == ctx.INTLIT():
             return IntLiteral(int(ctx.INTLIT()))
         elif self.visitChild(ctx) == ctx.FLOATLIT():
@@ -107,10 +107,10 @@ class ASTGeneration(MPVisitor):
     def visitCompound_type(self, ctx:MPParser.Compound_typeContext):    
     #compound_type: array_dec
         self.visitChild(ctx.array_dec())
-        return ArrayType()
 
     def visitArray_dec(self, ctx:MPParser.Array_decContext):
     #array_dec: ARRAY LSB expression DD2 expression RSB OF primitive_types 
+        return ArrayType(self.visit(ctx.expression()),self.visit(ctx.expression()),self.visit(ctx.primitive_types()))
 
     def visitOperand(self, ctx:MPParser.OperandContext):
     """operand
@@ -124,6 +124,103 @@ class ASTGeneration(MPVisitor):
             return Id(ctx.ID().getText())
         else: 
             return self.visitFuncall(ctx.funcall())
+
+    """expression:
+    expression ANDTHEN expression1
+    | expression ORELSE expression1
+    | expression1
+    | operand
+    ;"""
+    def visitExpression(self, ctx:MPParser.ExpressionContext):
+        if ctx.getChildCount() == 1:
+            return self.visitChild(ctx)
+        elif ctx.getChild(1) == ctx.ANDTHEN():
+            andthen = "andthen"
+            return BinaryOp(andthen,self.visit(ctx.expression()),self.visit(ctx.expression1()))
+        else 
+            orelse = "orelse" 
+            return BinaryOp(orelse,self.visit(ctx.expression()),self.visit(ctx.expression1()))
+
+    """expression1:
+    expression2 EQUAL expression2
+    | expression2 NOT_EQUAL expression2
+    | expression2 LESS_THAN expression2
+    | expression2 GREATER_THAN expression2
+    | expression2 LESS_THAN_EQUAL expression2
+    | expression2 GREATER_THAN_EQUAL expression2
+    | expression2
+    ;"""
+    def visitExpression1(self, ctx:MPParser.Expression1Context):
+        if ctx.getChildCount() == 1:
+            self.visitChild(ctx)
+        else
+            return BinaryOp(ctx.getChild(1).getText(),self.visit(ctx.expression2()),self.visit(ctx.expression2()))
+
+    """expression2:
+    expression2 ADD expression3
+    | expression2 SUB expression3
+    | expression2 OR expression3
+    | expression3
+    ;"""
+    def visitExpression2(self, ctx:MPParser.Expression2Context):
+        if ctx.getChildCount() == 1:
+            self.visitChild(ctx)
+        else
+            return BinaryOp(ctx.getChild(1).getText(),self.visit(ctx.expression2()),self.visit(ctx.expression3()))
+
+    """expression3:
+    expression3 DIVISION expression4
+    | expression3 MULTIPLICATION expression4
+    | expression3 DIV expression4
+    | expression3 MOD expression4
+    | expression3 AND expression4
+    | expression4
+    ;"""
+    def visitExpression3(self, ctx:MPParser.Expression3Context):
+        if ctx.getChildCount() == 1:
+            self.visitChild(ctx)
+        else
+            return BinaryOp(ctx.getChild(1).getText(),self.visit(ctx.expression3()),self.visit(ctx.expression4()))
+
+    """expression4:
+    SUB expression4
+    | NOT expression4
+    | expression5
+    ;"""
+    def visitExpression4(self, ctx:MPParser.Expression4Context):
+        if ctx.getChildCount() == 1:
+            self.visitChild(ctx)
+        else
+            return UnaryOp(ctx.getChild(0).getText(),self.visit(ctx.expression4()))        
+
+    """expression5:
+    expression5 LSB expression RSB
+    | expression6
+    ;"""
+    def visitExpression5(self, ctx:MPParser.Expression5Context):
+        if ctx.getChildCount() == 1:
+            self.visitChild(ctx)
+        else 
+            return ArrayCell(self.visit(ctx.expression5()),self.visit(ctx.expression()))        
+
+    """expression6:
+    LB expression RB
+    | operand
+    ;"""
+    def visitExpression6(self, ctx:MPParser.Expression6Context):
+        if ctx.getChildCount() == 1:
+            self.visitChild(ctx)
+        else
+            self.visit(ctx.expression())
+
+    """arrayelement:
+    expression5 LSB expression RSB
+    ;"""
+    def visitArrayelement(self, ctx:MPParser.ArrayelementContext):
+            if ctx.getChildCount() == 1:
+            self.visitChild(ctx)
+        else 
+            return ArrayCell(self.visit(ctx.expression5()),self.visit(ctx.expression()))  
 
     def visitFuncall(self, ctx:MPParser.FuncallContext):
     #funcall: ID LB listexp? RB 
@@ -180,7 +277,7 @@ class ASTGeneration(MPVisitor):
 
     def visitForstatement(self, ctx:MPParser.ForstatementContext):
     #forstatement: FOR ID ASSIGN initialExp (TO | DOWNTO) finalExp DO statements 
-        if ctx.getChild(5) == TO:
+        if ctx.getChild(4) == ctx.TO():
             up = True
         else:
             up = False
