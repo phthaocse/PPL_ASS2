@@ -3,45 +3,56 @@ from MPParser import MPParser
 from AST import *
 
 class ASTGeneration(MPVisitor):
-    def visitProgram(self,ctx:MPParser.ProgramContext):
+    def visitProgram(self, ctx:MPParser.ProgramContext):
         return Program([self.visit(x) for x in ctx.decl()])
 
     def visitDecl(self,ctx:MPParser.DeclContext):
     #decl: var_dec | fun_dec | procedure_dec 
-        return Decl(self.visitChild(ctx))
+        return self.visitChildren(ctx)
 
-    def visitVardecl(self,ctx:MPParser.Var_decContext):
+    def visitVar_dec(self, ctx:MPParser.Var_decContext):
     # VAR varlist_dec
         return self.visit(ctx.varlist_dec())
 
-    def visitVarlist(self,ctx:MPParser.Varlist_decContext):        
+    def visitVarlist_dec(self, ctx:MPParser.Varlist_decContext):       
     # varlist_dec: one_var_dec varlist_dec | one_var_dec ; 
+        print("Varlist_dec")
         result = []
-        while(ctx.getChildCount() != 1):
-            result.insert(len(result),self.visit(ctx.one_var_dec()))
+        while ctx.getChildCount() != 1:
+            result.append(self.visit(ctx.one_var_dec()))
             ctx = ctx.varlist_dec()
-        result.insert(len(result),self.visit(ctx.one_var_dec()))
-        return [self.visit(x) for x in result]
+        result.append(self.visit(ctx.one_var_dec()))
+        for i in range(1,len(result)):
+            result[0] = str(result[0]) + "," + str(result[i])
+        return result[0]       
 
     def visitOne_var_dec(self,ctx:MPParser.One_var_decContext):
     #one_var_dec:  idlist COLON types  SEMI 
+        print("One_var_dec")
         id_l = self.visit(ctx.idlist())
-        return [VarDecl(x,ctx.types()) for x in id_l]
-
+        types = self.visit(ctx.types())
+        result = [VarDecl(Id(x),types) for x in id_l]
+        for i in range(1,len(result)):
+            result[0] = str(result[0]) + "," + str(result[i])
+        return result[0]
+    
     def visitIdlist(self,ctx:MPParser.IdlistContext):
     #idlist: ID COMMA idlist | ID;
         result = []
-        while(ctx.getChildCount() != 1):
-            result.insert(len(result),Id(ctx.ID().getText()))
+        while(ctx.getChildCount() != 1): 
+            result.append(ctx.ID().getText())
             ctx = ctx.idlist()
-        result.insert(len(result),Id(ctx.ID().getText()))
+        result.append(ctx.ID().getText())
         return result
-
 
     def visitFun_dec(self, ctx:MPParser.Fun_decContext):
     #  fun_dec: FUNCTION ID LB paralist RB COLON types SEMI (var_dec)? compoundStatement
+        print("Fun_dec")
         para = self.visit(ctx.paralist())
-        local = self.visit(ctx.var_dec())
+        if ctx.var_dec(): 
+            local = self.visit(ctx.var_dec())
+        else:
+            local = []
         cpstmt = self.visit(ctx.compoundStatement())
         return FuncDecl(Id(ctx.ID().getText()),
                         para,
@@ -49,10 +60,13 @@ class ASTGeneration(MPVisitor):
                         cpstmt,
                         self.visit(ctx.mtype()))
 
-    def visitProcdecl(self,ctx:MPParser.ProcdeclContext):
+    def visitProcedure_dec(self, ctx:MPParser.Procedure_decContext):
     #procedure_dec: PROCEDURE ID LB paralist RB SEMI var_dec? compoundStatement ;
         para = self.visit(ctx.paralist())
-        local = self.visit(ctx.var_dec())
+        if ctx.var_dec(): 
+            local = self.visit(ctx.var_dec())
+        else:
+            local = []
         cpstmt = self.visit(ctx.compoundStatement())
         return FuncDecl(Id(ctx.ID().getText()),
                         para,
@@ -61,10 +75,12 @@ class ASTGeneration(MPVisitor):
     def visitParalist(self, ctx:MPParser.ParalistContext):
     #paralist: para_dec SEMI paralist | (para_dec)? 
         result = [] #list store para_dec
-        while(ctx.getChildCount() != 1):
-            result.insert(len(result),ctx.para_dec)
+        if ctx.getChildCount() == 0:
+            return result
+        while ctx.getChildCount() != 1:
+            result.insert(len(result),ctx.para_dec())
             ctx = ctx.paralist()
-        result.insert(len(result),ctx.para_dec)
+        result.append(ctx.para_dec())
         return [self.visit(x) for x in result]
 
     def visitPara_dec(self, ctx:MPParser.Para_decContext):
@@ -74,53 +90,47 @@ class ASTGeneration(MPVisitor):
 
     def visitTypes(self, ctx:MPParser.TypesContext):
     #types: primitive_types| compound_type 
-        return Type(self.visitChild(ctx))
+        return self.visitChildren(ctx)
 
     def visitLiterals(self, ctx:MPParser.LiteralsContext):
-    """    literals
-    : INTLIT 
-    | FLOATLIT
-    | BOOL_LIT
-    | STRING_LIT
-    ;
-`  """
-        if self.visitChild(ctx) == ctx.INTLIT():
-            return IntLiteral(int(ctx.INTLIT()))
-        elif self.visitChild(ctx) == ctx.FLOATLIT():
-            return FloatLiteral(float(ctx.FLOATLIT()))
-        elif self.visitChild(ctx) == ctx.BOOL_LIT():
-            return BooleanLiteral(bool(ctx.BOOL_LIT()))
+        if self.visitChildren(ctx) == ctx.INTLIT():
+            return IntLiteral(ctx.INTLIT().getText())
+        elif self.visitChildren(ctx) == ctx.FLOATLIT():
+            return FloatLiteral(ctx.FLOATLIT().getText())
+        elif self.visitChildren(ctx) == ctx.BOOL_LIT():
+            return BooleanLiteral(ctx.BOOL_LIT().getText())
         else: 
-            return StringLiteral(string(ctx.STRING_LIT()))
+            return StringLiteral(ctx.STRING_LIT().getText())
 
     def visitPrimitive_types(self, ctx:MPParser.Primitive_typesContext):
     #primitive_types: ( BOOLEAN | INTEGER | REAL | STRING )
-        if self.visitChild(ctx) == ctx.BOOLEAN():
+        if ctx.BOOLEAN():
             return BoolType()
-        elif self.visitChild(ctx) == ctx.INTEGER()
+        elif ctx.INTEGER():
             return IntType()
-        elif self.visitChild(ctx) == ctx.REAL()
+        elif ctx.REAL():
             return FloatType()
         else:
             return StringType()
 
     def visitCompound_type(self, ctx:MPParser.Compound_typeContext):    
     #compound_type: array_dec
-        self.visitChild(ctx.array_dec())
+        self.visitChildren(ctx.array_dec())
 
     def visitArray_dec(self, ctx:MPParser.Array_decContext):
     #array_dec: ARRAY LSB expression DD2 expression RSB OF primitive_types 
         return ArrayType(self.visit(ctx.expression()),self.visit(ctx.expression()),self.visit(ctx.primitive_types()))
-
-    def visitOperand(self, ctx:MPParser.OperandContext):
+ 
     """operand
     : literals
     | ID
     | funcall
     ;"""
-        if self.visitChild(ctx) == ctx.literals():
+    def visitOperand(self, ctx:MPParser.OperandContext):
+
+        if self.visitChildren(ctx) == ctx.literals():
             return self.visitLiterals(ctx.literals())
-        elif self.visitChild(ctx) == ctx.ID():
+        elif self.visitChildren(ctx) == ctx.ID():
             return Id(ctx.ID().getText())
         else: 
             return self.visitFuncall(ctx.funcall())
@@ -133,11 +143,11 @@ class ASTGeneration(MPVisitor):
     ;"""
     def visitExpression(self, ctx:MPParser.ExpressionContext):
         if ctx.getChildCount() == 1:
-            return self.visitChild(ctx)
+            return self.visitChildren(ctx)
         elif ctx.getChild(1) == ctx.ANDTHEN():
             andthen = "andthen"
             return BinaryOp(andthen,self.visit(ctx.expression()),self.visit(ctx.expression1()))
-        else 
+        else: 
             orelse = "orelse" 
             return BinaryOp(orelse,self.visit(ctx.expression()),self.visit(ctx.expression1()))
 
@@ -152,8 +162,8 @@ class ASTGeneration(MPVisitor):
     ;"""
     def visitExpression1(self, ctx:MPParser.Expression1Context):
         if ctx.getChildCount() == 1:
-            self.visitChild(ctx)
-        else
+            self.visitChildren(ctx)
+        else:
             return BinaryOp(ctx.getChild(1).getText(),self.visit(ctx.expression2()),self.visit(ctx.expression2()))
 
     """expression2:
@@ -164,8 +174,8 @@ class ASTGeneration(MPVisitor):
     ;"""
     def visitExpression2(self, ctx:MPParser.Expression2Context):
         if ctx.getChildCount() == 1:
-            self.visitChild(ctx)
-        else
+            self.visitChildren(ctx)
+        else:
             return BinaryOp(ctx.getChild(1).getText(),self.visit(ctx.expression2()),self.visit(ctx.expression3()))
 
     """expression3:
@@ -178,8 +188,8 @@ class ASTGeneration(MPVisitor):
     ;"""
     def visitExpression3(self, ctx:MPParser.Expression3Context):
         if ctx.getChildCount() == 1:
-            self.visitChild(ctx)
-        else
+            self.visitChildren(ctx)
+        else:
             return BinaryOp(ctx.getChild(1).getText(),self.visit(ctx.expression3()),self.visit(ctx.expression4()))
 
     """expression4:
@@ -189,8 +199,8 @@ class ASTGeneration(MPVisitor):
     ;"""
     def visitExpression4(self, ctx:MPParser.Expression4Context):
         if ctx.getChildCount() == 1:
-            self.visitChild(ctx)
-        else
+            self.visitChildren(ctx)
+        else:
             return UnaryOp(ctx.getChild(0).getText(),self.visit(ctx.expression4()))        
 
     """expression5:
@@ -199,8 +209,8 @@ class ASTGeneration(MPVisitor):
     ;"""
     def visitExpression5(self, ctx:MPParser.Expression5Context):
         if ctx.getChildCount() == 1:
-            self.visitChild(ctx)
-        else 
+            self.visitChildren(ctx)
+        else: 
             return ArrayCell(self.visit(ctx.expression5()),self.visit(ctx.expression()))        
 
     """expression6:
@@ -209,17 +219,17 @@ class ASTGeneration(MPVisitor):
     ;"""
     def visitExpression6(self, ctx:MPParser.Expression6Context):
         if ctx.getChildCount() == 1:
-            self.visitChild(ctx)
-        else
+            self.visitChildren(ctx)
+        else:
             self.visit(ctx.expression())
 
     """arrayelement:
     expression5 LSB expression RSB
     ;"""
     def visitArrayelement(self, ctx:MPParser.ArrayelementContext):
-            if ctx.getChildCount() == 1:
-            self.visitChild(ctx)
-        else 
+        if ctx.getChildCount() == 1:
+            self.visitChildren(ctx)
+        else: 
             return ArrayCell(self.visit(ctx.expression5()),self.visit(ctx.expression()))  
 
     def visitFuncall(self, ctx:MPParser.FuncallContext):
@@ -229,7 +239,7 @@ class ASTGeneration(MPVisitor):
     def visitListexp(self, ctx:MPParser.ListexpContext):
     #listexp: expression COMMA listexp | expression
         result = [] #list store exp (listexp)
-        while ctx.getChildCount() != 1
+        while ctx.getChildCount() != 1:
             result.insert(len(result),self.visit(ctx.expression()))
             ctx = ctx.listexp() 
         result.insert(len(result),self.visit(ctx.expression()))
@@ -237,10 +247,13 @@ class ASTGeneration(MPVisitor):
 
     def visitCompoundStatement(self, ctx:MPParser.CompoundStatementContext):
     #compoundStatement: BEGIN (lis_statements)? END 
-        return self.visit(ctx.lis_statements())
+        if ctx.lis_statements():
+            return self.visit(ctx.lis_statements())
+        else: 
+            return []
 
     
-""" statements
+    """ statements
     : assignstatement
     | ifstatement
     | whilestatement
@@ -253,7 +266,7 @@ class ASTGeneration(MPVisitor):
     | callstatements
     ;"""
     def visitStatements(self, ctx:MPParser.StatementsContext):
-        return self.visitChild(ctx)
+        return self.visitChildren(ctx)
 
     def visitAssignstatement(self, ctx:MPParser.AssignstatementContext):
     #assignstatement: (variable ASSIGN)+ expression SEMI 
@@ -262,10 +275,10 @@ class ASTGeneration(MPVisitor):
 
     def visitVariable(self, ctx:MPParser.VariableContext):
     #variable: ID | arrayelement
-        if self.visitChild(ctx) == ctx.ID():
+        if self.visitChildren(ctx) == ctx.ID():
             return Id(ctx.ID().getText())
         else:
-            self.visitChild(ctx)
+            self.visitChildren(ctx)
 
     def visitIfstatement(self, ctx:MPParser.IfstatementContext):
     #ifstatement: IF expression THEN statements (: ELSE statements)? 
@@ -285,10 +298,10 @@ class ASTGeneration(MPVisitor):
 
     def visitInitialExp(self, ctx:MPParser.InitialExpContext):
     #initialExp: expression
-        return self.visitChild(ctx)
+        return self.visitChildren(ctx)
 
     def visitFinalExp(self, ctx:MPParser.FinalExpContext):
-        return self.visitChild(ctx)
+        return self.visitChildren(ctx)
 
     def visitBreakstatement(self, ctx:MPParser.BreakstatementContext):
     #breakstatement: BREAK SEMI 
@@ -300,15 +313,18 @@ class ASTGeneration(MPVisitor):
 
     def visitReturnstatement(self, ctx:MPParser.ReturnstatementContext):
     #returnstatement: RETURN expression? SEMI 
-        return Return(self.visit(ctx.expression()))
+        if ctx.expression():
+            return Return(self.visit(ctx.expression()))
+        else: 
+            return Return()
         
     def visitLis_statements(self, ctx:MPParser.Lis_statementsContext):
     #lis_statements: statements lis_statements | statements ;
         result = [] #lis_stmt
-        while ctx.getChildCount() != 1
-            result.insert(len(result),ctx.statements())
+        while ctx.getChildCount() != 1:
+            result.append(self.visit(ctx.statements()))
             ctx = ctx.lis_statements()
-        result.insert(len(result),ctx.statements())
+        result.append(self.visit(ctx.statements()))
         return result
 
     def visitWithstatements(self, ctx:MPParser.WithstatementsContext):
