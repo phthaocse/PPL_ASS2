@@ -93,13 +93,19 @@ class ASTGeneration(MPVisitor):
         return self.visitChildren(ctx)
 
     def visitLiterals(self, ctx:MPParser.LiteralsContext):
-        if self.visitChildren(ctx) == ctx.INTLIT():
+        print("Lit")
+        if ctx.INTLIT():
+            print("int")
+            print(ctx.INTLIT().getText())
             return IntLiteral(ctx.INTLIT().getText())
-        elif self.visitChildren(ctx) == ctx.FLOATLIT():
+        elif ctx.FLOATLIT():
+            print("float")            
             return FloatLiteral(ctx.FLOATLIT().getText())
-        elif self.visitChildren(ctx) == ctx.BOOL_LIT():
+        elif ctx.BOOL_LIT():
+            print("bool")
             return BooleanLiteral(ctx.BOOL_LIT().getText())
         else: 
+            print("string")
             return StringLiteral(ctx.STRING_LIT().getText())
 
     def visitPrimitive_types(self, ctx:MPParser.Primitive_typesContext):
@@ -115,11 +121,17 @@ class ASTGeneration(MPVisitor):
 
     def visitCompound_type(self, ctx:MPParser.Compound_typeContext):    
     #compound_type: array_dec
-        self.visitChildren(ctx.array_dec())
+        self.visitChildren(ctx)
 
     def visitArray_dec(self, ctx:MPParser.Array_decContext):
     #array_dec: ARRAY LSB expression DD2 expression RSB OF primitive_types 
-        return ArrayType(self.visit(ctx.expression()),self.visit(ctx.expression()),self.visit(ctx.primitive_types()))
+        print("Array_dec")
+        lower = self.visit(ctx.expression(0))
+        uper = self.visit(ctx.expression(1))
+        types = self.visit(ctx.primitive_types())
+        print(lower)
+        print(uper)
+        return ArrayType(lower,uper,types)
  
     """operand
     : literals
@@ -127,13 +139,13 @@ class ASTGeneration(MPVisitor):
     | funcall
     ;"""
     def visitOperand(self, ctx:MPParser.OperandContext):
-
-        if self.visitChildren(ctx) == ctx.literals():
-            return self.visitLiterals(ctx.literals())
-        elif self.visitChildren(ctx) == ctx.ID():
+        print("operand")
+        if  ctx.getChild(0) == ctx.literals():
+            return self.visit(ctx.literals())
+        elif ctx.getChild(0) == ctx.ID():
             return Id(ctx.ID().getText())
         else: 
-            return self.visitFuncall(ctx.funcall())
+            return self.visit(ctx.funcall())
 
     """expression:
     expression ANDTHEN expression1
@@ -142,6 +154,7 @@ class ASTGeneration(MPVisitor):
     | operand
     ;"""
     def visitExpression(self, ctx:MPParser.ExpressionContext):
+        print("expr")
         if ctx.getChildCount() == 1:
             return self.visitChildren(ctx)
         elif ctx.getChild(1) == ctx.ANDTHEN():
@@ -161,10 +174,11 @@ class ASTGeneration(MPVisitor):
     | expression2
     ;"""
     def visitExpression1(self, ctx:MPParser.Expression1Context):
+        print("expr1")
         if ctx.getChildCount() == 1:
             self.visitChildren(ctx)
         else:
-            return BinaryOp(ctx.getChild(1).getText(),self.visit(ctx.expression2()),self.visit(ctx.expression2()))
+            return BinaryOp(ctx.getChild(1).getText(),self.visit(ctx.expression2(0)),self.visit(ctx.expression2(1)))
 
     """expression2:
     expression2 ADD expression3
@@ -173,6 +187,7 @@ class ASTGeneration(MPVisitor):
     | expression3
     ;"""
     def visitExpression2(self, ctx:MPParser.Expression2Context):
+        print("expr2")
         if ctx.getChildCount() == 1:
             self.visitChildren(ctx)
         else:
@@ -187,6 +202,7 @@ class ASTGeneration(MPVisitor):
     | expression4
     ;"""
     def visitExpression3(self, ctx:MPParser.Expression3Context):
+        print("expr3")
         if ctx.getChildCount() == 1:
             self.visitChildren(ctx)
         else:
@@ -198,6 +214,7 @@ class ASTGeneration(MPVisitor):
     | expression5
     ;"""
     def visitExpression4(self, ctx:MPParser.Expression4Context):
+        print("expr4")
         if ctx.getChildCount() == 1:
             self.visitChildren(ctx)
         else:
@@ -208,6 +225,7 @@ class ASTGeneration(MPVisitor):
     | expression6
     ;"""
     def visitExpression5(self, ctx:MPParser.Expression5Context):
+        print("expr5")
         if ctx.getChildCount() == 1:
             self.visitChildren(ctx)
         else: 
@@ -218,6 +236,7 @@ class ASTGeneration(MPVisitor):
     | operand
     ;"""
     def visitExpression6(self, ctx:MPParser.Expression6Context):
+        print("expr6")
         if ctx.getChildCount() == 1:
             self.visitChildren(ctx)
         else:
