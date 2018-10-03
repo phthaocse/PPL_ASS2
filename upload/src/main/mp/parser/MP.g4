@@ -229,7 +229,7 @@ primitive_types: ( BOOLEAN | INTEGER | REAL | STRING );
 
 compound_type: array_dec;
 
-array_dec: ARRAY LSB expression DD2 expression RSB OF primitive_types ;
+array_dec: ARRAY LSB SUB? INTLIT DD2 SUB? INTLIT RSB OF primitive_types ;
 
 operand
 	: literals
