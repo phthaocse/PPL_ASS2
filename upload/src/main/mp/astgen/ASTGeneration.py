@@ -19,7 +19,7 @@ class ASTGeneration(MPVisitor):
  #               result[0] = str(result[0]) + "," + str(result[i])
  #           return result[0]
  #       else:
- #           return result
+  #          return result
     def visitVarlist_dec(self, ctx:MPParser.Varlist_decContext):       
     # varlist_dec: one_var_dec varlist_dec | one_var_dec ; 
         print("Varlist_dec")
@@ -59,8 +59,9 @@ class ASTGeneration(MPVisitor):
     #  fun_dec: FUNCTION ID LB paralist RB COLON types SEMI (var_dec)? compoundStatement
         print("Fun_dec")
         para = self.visit(ctx.paralist())
+        cpstmt = self.visit(ctx.compoundStatement())
         if ctx.var_dec(): 
-            result = self.visit(ctx.var_dec())
+            result = str(self.visit(ctx.var_dec()))
             local = []
             cur = 0
             for i in range(1,len(result)):
@@ -70,18 +71,18 @@ class ASTGeneration(MPVisitor):
             local.append(result[cur:])  
         else:
             local = []
-        cpstmt = self.visit(ctx.compoundStatement())
+
         return FuncDecl(Id(ctx.ID().getText()),
                         para,
                         local,
                         cpstmt,
-                        self.visit(ctx.mtype()))
+                        self.visit(ctx.types()))
 
     def visitProcedure_dec(self, ctx:MPParser.Procedure_decContext):
     #procedure_dec: PROCEDURE ID LB paralist RB SEMI var_dec? compoundStatement ;
         para = self.visit(ctx.paralist())
         if ctx.var_dec(): 
-            result = self.visit(ctx.var_dec())
+            result = str(self.visit(ctx.var_dec()))
             local = []
             cur = 0
             for i in range(1,len(result)):
@@ -127,7 +128,7 @@ class ASTGeneration(MPVisitor):
         elif ctx.FLOATLIT():           
             return FloatLiteral(float(ctx.FLOATLIT().getText()))
         elif ctx.BOOL_LIT():
-            return BooleanLiteral(ctx.BOOL_LIT().getText())
+            return BooleanLiteral(self.toBool(ctx.BOOL_LIT().getText()))
         else: 
             return StringLiteral(ctx.STRING_LIT().getText())
 
@@ -282,7 +283,10 @@ class ASTGeneration(MPVisitor):
 
     def visitFuncall(self, ctx:MPParser.FuncallContext):
     #funcall: ID LB listexp? RB 
-        return CallExpr(Id(ctx.ID().getText()),self.visit(ctx.listexp()))
+        if ctx.listexp():
+            return CallExpr(Id(ctx.ID().getText()),self.visit(ctx.listexp()))
+        else:
+            return CallExpr(Id(ctx.ID().getText()),[])
 
     def visitListexp(self, ctx:MPParser.ListexpContext):
     #listexp: expression COMMA listexp | expression
@@ -318,13 +322,19 @@ class ASTGeneration(MPVisitor):
 
     def visitAssignstatement(self, ctx:MPParser.AssignstatementContext):
     #assignstatement: (variable ASSIGN)+ expression SEMI 
-        variable_res = ctx.variable()[::-1]
-        return functools.reduce(lambda x,y: Assign(y,x),variable_res,self.visit(ctx.expression()))
+        result = []
+        exp = self.visit(ctx.expression())
+        for x in ctx.variable():
+            result = result + [Assign(self.visit(x),exp)]
+        print("re:",result)
+        for i in range(1,len(result)):
+            result[0] = str(result[0]) + "," + str(result[i])
+        return result[0]
 
 
     def visitVariable(self, ctx:MPParser.VariableContext):
     #variable: ID | arrayelement
-        if self.visitChildren(ctx) == ctx.ID():
+        if ctx.ID():
             return Id(ctx.ID().getText())
         else:
             self.visitChildren(ctx)
@@ -341,7 +351,7 @@ class ASTGeneration(MPVisitor):
 
     def visitForstatement(self, ctx:MPParser.ForstatementContext):
     #forstatement: FOR ID ASSIGN initialExp (TO | DOWNTO) finalExp DO statements 
-        if ctx.getChild(4) == ctx.TO():
+        if ctx.TO():
             up = True
         else:
             up = False
@@ -372,29 +382,19 @@ class ASTGeneration(MPVisitor):
     def visitLis_statements(self, ctx:MPParser.Lis_statementsContext):
     #lis_statements: statements lis_statements | statements ;
         result = [] #lis_stmt
-        print("so con",ctx.getChildCount())
         while ctx.getChildCount() != 1:
-            result.append(str(self.visit(ctx.statements())))
+            result.append(self.visit(ctx.statements()))
             ctx = ctx.lis_statements()
-        result.append(str(self.visit(ctx.statements())))
-        print("day la 4: ",result)
+        result.append(self.visit(ctx.statements()))
         return result
 
     def visitWithstatements(self, ctx:MPParser.WithstatementsContext):
     #withstatements: WITH varlist_dec DO statements
         result = [self.visit(ctx.varlist_dec())]
-        print("day la 3:",result)
-        local = []
-        cur = 0
-        for i in range(1,len(result)):
-            if result[i] == "V":
-                local.append(result[cur:i-1]) 
-                cur = i
-        local.append(result[cur:])  
         return With(result,self.visit(ctx.statements()))
 
     def visitCallstatements(self, ctx:MPParser.CallstatementsContext):
     #callstatements: funcall SEMI 
-        ctx = self.visit(ctx.funcall())
+        ctx = ctx.funcall()
         return CallStmt(Id(ctx.ID().getText()),self.visit(ctx.listexp()))
 
