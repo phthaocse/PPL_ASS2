@@ -114,7 +114,10 @@ class ASTGeneration(MPVisitor):
         elif ctx.FLOATLIT():           
             return FloatLiteral(float(ctx.FLOATLIT().getText()))
         elif ctx.BOOL_LIT():
-            return BooleanLiteral(ctx.BOOL_LIT().getText())
+            if str(ctx.BOOL_LIT().getText())[0] == "T" or str(ctx.BOOL_LIT().getText())[0] == "t":
+                return BooleanLiteral(True)
+            else:
+                return BooleanLiteral(False)
         else: 
             return StringLiteral(ctx.STRING_LIT().getText())
 
