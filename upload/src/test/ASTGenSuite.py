@@ -114,5 +114,17 @@ begin
 end
 var a:array[1 .. 10] of integer;
 """
-        expect = "Program([FuncDecl(Id(foo),[VarDecl(Id(n),IntType),VarDecl(Id(x),ArrayType(1,10,IntType))],ArrayType(1,10,IntType),[VarDecl(Id(b),ArrayType(1,10,IntType))],[With([VarDecl(Id(i),IntType)],[If(BinaryOp(>,Id(n),IntLiteral(0)),[For(Id(i),Id(n),ArrayCell(Id(a),Id(n)),False,[AssignStmt(ArrayCell(Id(b),Id(i)),BinaryOp(+,ArrayCell(Id(a),Id(i)),ArrayCell(Id(x),Id(i)))),If(BinaryOp(=,Id(i),ArrayCell(Id(a),ArrayCell(Id(x),Id(i)))),[Return(Id(x))],[Continue])])],[For(Id(i),IntLiteral(1),BinaryOp(mod,Id(n),ArrayCell(Id(a),Id(n))),True,[AssignStmt(ArrayCell(Id(b),Id(i)),BinaryOp(andthen,ArrayCell(Id(a),Id(i)),BinaryOp(orelse,ArrayCell(Id(x),Id(i)),ArrayCell(Id(b),Id(i))))),If(ArrayCell(Id(a),ArrayCell(Id(x),Id(i))),[Return(Id(x))],[Break])])])]),Return(CallExpr(Id(foo),[CallExpr(Id(foo),[Id(x)]),ArrayCell(Id(a),ArrayCell(Id(x),Id(n)))]))]),FuncDecl(Id(main),[],VoidType,[VarDecl(Id(i),IntType)],[AssignStmt(Id(i),CallExpr(Id(getIntLn),[])),CallStmt(Id(foo),[Id(a),Id(i)]),With([VarDecl(Id(i),IntType)],[For(Id(i),IntLiteral(1),IntLiteral(10),True,[CallStmt(Id(putIntLn),[ArrayCell(Id(a),Id(i))])])])]),VarDecl(Id(a),ArrayType(1,10,IntType))])"
+        expect = "Program([FuncDecl(Id(foo),[VarDecl(Id(n),IntType),VarDecl(Id(x),ArrayType(1,10,IntType))],ArrayType(1,10,IntType),[VarDecl(Id(b),ArrayType(1,10,IntType))],[With([VarDecl(Id(i),IntType)],[If(BinaryOp(>,Id(n),IntLiteral(0)),[For(Id(i),Id(n),ArrayCell(Id(a),Id(n)),False,[AssignStmt(ArrayCell(Id(b),Id(i)),BinaryOp(+,ArrayCell(Id(a),Id(i)),ArrayCell(Id(x),Id(i)))),If(BinaryOp(=,Id(i),ArrayCell(Id(a),ArrayCell(Id(x),Id(i)))),[Return(Some(Id(x)))],[Continue])])],[For(Id(i),IntLiteral(1),BinaryOp(mod,Id(n),ArrayCell(Id(a),Id(n))),True,[AssignStmt(ArrayCell(Id(b),Id(i)),BinaryOp(orelse,BinaryOp(andthen,ArrayCell(Id(a),Id(i)),ArrayCell(Id(x),Id(i))),ArrayCell(Id(b),Id(i)))),If(ArrayCell(Id(a),ArrayCell(Id(x),Id(i))),[Return(Some(Id(x)))],[Break])])])]),Return(Some(CallExpr(Id(foo),[CallExpr(Id(foo),[Id(x)]),ArrayCell(Id(a),ArrayCell(Id(x),Id(n)))])))]),FuncDecl(Id(main),[],VoidType(),[VarDecl(Id(i),IntType)],[AssignStmt(Id(i),CallExpr(Id(getIntLn),[])),CallStmt(Id(foo),[Id(a),Id(i)]),With([VarDecl(Id(i),IntType)],[For(Id(i),IntLiteral(1),IntLiteral(10),True,[CallStmt(Id(putIntLn),[ArrayCell(Id(a),Id(i))])])])]),VarDecl(Id(a),ArrayType(1,10,IntType))])"
         self.assertTrue(TestAST.test(input,expect,309))
+    def test_if_program310(self):
+        input = """ procedure main();
+                begin
+                    if a = b then 
+                        if a = c then
+                            return x;
+                    else
+                        return y;
+                end
+"""
+        expect = "Program([FuncDecl(Id(main),[],VoidType(),[],[If(BinaryOp(=,Id(a),Id(b)),[If(BinaryOp(=,Id(a),Id(c)),[Return(Some(Id(x)))],[Return(Some(Id(y)))])],[])])])"
+        self.assertTrue(TestAST.test(input,expect,310))

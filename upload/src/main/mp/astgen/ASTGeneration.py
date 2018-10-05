@@ -9,7 +9,13 @@ class ASTGeneration(MPVisitor):
 
     def visitDecl(self,ctx:MPParser.DeclContext):
     #decl: var_dec | fun_dec | procedure_dec 
-        return self.visitChildren(ctx)
+        result = self.visitChildren(ctx)
+        if ctx.var_dec():
+            for i in range(1,len(result)):
+                result[0] = str(result[0]) + "," + str(result[i])
+            return result[0]
+        else: 
+            return result
 
     def visitVar_dec(self, ctx:MPParser.Var_decContext):
     # VAR varlist_dec
@@ -22,29 +28,21 @@ class ASTGeneration(MPVisitor):
   #          return result
     def visitVarlist_dec(self, ctx:MPParser.Varlist_decContext):       
     # varlist_dec: one_var_dec varlist_dec | one_var_dec ; 
-        print("Varlist_dec")
-        result = []
-        while ctx.getChildCount() != 1:
-            result.append(self.visit(ctx.one_var_dec()))
-            ctx = ctx.varlist_dec()
-        result.append(self.visit(ctx.one_var_dec()))
-        for i in range(1,len(result)):
-            result[0] = str(result[0]) + "," + str(result[i])
-        print("day la: ",result[0])
-        return result[0]
-
-
+        #print("Varlist_dec")
+        if ctx.varlist_dec():
+            return self.visit(ctx.one_var_dec()) + self.visit(ctx.varlist_dec()) 
+        else:
+            return self.visit(ctx.one_var_dec())
 
     def visitOne_var_dec(self,ctx:MPParser.One_var_decContext):
     #one_var_dec:  idlist COLON types  SEMI 
-        print("One_var_dec")
+       # print("One_var_dec")
         id_l = self.visit(ctx.idlist())
-        print(id_l)
         types = self.visit(ctx.types())
-        result = [VarDecl(Id(x),types) for x in id_l]
-        for i in range(1,len(result)):
-            result[0] = str(result[0]) + "," + str(result[i])
-        return result[0]
+        return [VarDecl(Id(x),types) for x in id_l]
+#        for i in range(1,len(result)):
+#            result[0] = str(result[0]) + "," + str(result[i])
+        
     
     def visitIdlist(self,ctx:MPParser.IdlistContext):
     #idlist: ID COMMA idlist | ID;
@@ -60,15 +58,10 @@ class ASTGeneration(MPVisitor):
         print("Fun_dec")
         para = self.visit(ctx.paralist())
         cpstmt = self.visit(ctx.compoundStatement())
+
+
         if ctx.var_dec(): 
-            result = str(self.visit(ctx.var_dec()))
-            local = []
-            cur = 0
-            for i in range(1,len(result)):
-                if result[i] == "V":
-                    local.append(result[cur:i-1]) 
-                    cur = i
-            local.append(result[cur:])  
+            local = self.visit(ctx.var_dec())
         else:
             local = []
 
@@ -82,14 +75,7 @@ class ASTGeneration(MPVisitor):
     #procedure_dec: PROCEDURE ID LB paralist RB SEMI var_dec? compoundStatement ;
         para = self.visit(ctx.paralist())
         if ctx.var_dec(): 
-            result = str(self.visit(ctx.var_dec()))
-            local = []
-            cur = 0
-            for i in range(1,len(result)):
-                if result[i] == "V":
-                    local.append(result[cur:i-1]) 
-                    cur = i
-            local.append(result[cur:])  
+            local = self.visit(ctx.var_dec())
         else:
             local = []
         cpstmt = self.visit(ctx.compoundStatement())
@@ -169,7 +155,7 @@ class ASTGeneration(MPVisitor):
     | funcall
     ;"""
     def visitOperand(self, ctx:MPParser.OperandContext):
-        print("operand")
+        #print("operand")
         if  ctx.getChild(0) == ctx.literals():
             return self.visit(ctx.literals())
         elif ctx.getChild(0) == ctx.ID():
@@ -300,6 +286,7 @@ class ASTGeneration(MPVisitor):
     def visitCompoundStatement(self, ctx:MPParser.CompoundStatementContext):
     #compoundStatement: BEGIN (lis_statements)? END 
         if ctx.lis_statements():
+            print("compound")
             return self.visit(ctx.lis_statements())
         else: 
             return []
@@ -317,19 +304,28 @@ class ASTGeneration(MPVisitor):
     | withstatements
     | callstatements
     ;"""
-    def visitStatements(self, ctx:MPParser.StatementsContext):
-        return self.visitChildren(ctx)
+    def visitStatements(self, ctx:MPParser.StatementsContext):     
+        if ctx.assignstatement():
+            result = self.visitChildren(ctx)   
+            for i in range(1,len(result)):
+                result[0] = str(result[0]) + "," + str(result[i]) 
+            return result[0]
+ 
+        else:
+            return self.visitChildren(ctx)   
 
     def visitAssignstatement(self, ctx:MPParser.AssignstatementContext):
     #assignstatement: (variable ASSIGN)+ expression SEMI 
-        result = []
         exp = self.visit(ctx.expression())
-        for x in ctx.variable():
-            result = result + [Assign(self.visit(x),exp)]
-        print("re:",result)
-        for i in range(1,len(result)):
-            result[0] = str(result[0]) + "," + str(result[i])
-        return result[0]
+        if isinstance(ctx.variable(),list):
+            print ("true")
+        else:
+            print ("false")
+        result =  [Assign(self.visit(x),exp) for x in ctx.variable()]
+        print("re:",[str(x) for x in result])
+#         for i in range(1,len(result)):
+#           result[0] = str(result[0]) + "," + str(result[i]) 
+        return [str(x) for x in result]
 
 
     def visitVariable(self, ctx:MPParser.VariableContext):
@@ -337,25 +333,37 @@ class ASTGeneration(MPVisitor):
         if ctx.ID():
             return Id(ctx.ID().getText())
         else:
-            self.visitChildren(ctx)
+            return self.visitChildren(ctx)
 
     def visitIfstatement(self, ctx:MPParser.IfstatementContext):
-    #ifstatement: IF expression THEN lis_statements (: ELSE lis_statements)? 
-        if ctx.lis_statements(1):
-            return If(self.visit(ctx.expression()),self.visit(ctx.lis_statements(0)),self.visit(ctx.lis_statements(1)))
-        return If(self.visit(ctx.expression()),self.visit(ctx.lis_statements(0)))
+    #ifstatement: IF expression THEN statements ( ELSE statements)? ;
+        thenstmt = self.visit(ctx.statements(0))
+        if not isinstance(thenstmt,list):
+            thenstmt = [thenstmt]
+        print("thenstmt ",  [str(x) for x in thenstmt])
+        if ctx.statements(1):
+            elsestmt = self.visit(ctx.statements(1))
+            if not isinstance(elsestmt,list):
+                elsestmt = [elsestmt]
+            print("elsestmt ",  [str(x) for x in elsestmt])
+            return If(self.visit(ctx.expression()),thenstmt,elsestmt)
+        return If(self.visit(ctx.expression()),thenstmt)
 
     def visitWhilestatement(self, ctx:MPParser.WhilestatementContext):
     #whilestatement: WHILE expression DO  statements 
-        return While(self.visit(ctx.expression()),self.visit(ctx.statements()))
+        return While(self.visit(ctx.expression()),[self.visit(ctx.statements())])
 
     def visitForstatement(self, ctx:MPParser.ForstatementContext):
     #forstatement: FOR ID ASSIGN initialExp (TO | DOWNTO) finalExp DO statements 
+        result = self.visit(ctx.statements())
         if ctx.TO():
             up = True
         else:
             up = False
-        return For(Id(ctx.ID().getText()),self.visit(ctx.initialExp()),self.visit(ctx.finalExp()),up,self.visit(ctx.statements()))        
+        if result: 
+            if not isinstance(result,list):
+                return For(Id(ctx.ID().getText()),self.visit(ctx.initialExp()),self.visit(ctx.finalExp()),up,[result])    
+        return For(Id(ctx.ID().getText()),self.visit(ctx.initialExp()),self.visit(ctx.finalExp()),up,result)     
 
     def visitInitialExp(self, ctx:MPParser.InitialExpContext):
     #initialExp: expression
@@ -381,20 +389,23 @@ class ASTGeneration(MPVisitor):
         
     def visitLis_statements(self, ctx:MPParser.Lis_statementsContext):
     #lis_statements: statements lis_statements | statements ;
-        result = [] #lis_stmt
-        while ctx.getChildCount() != 1:
-            result.append(self.visit(ctx.statements()))
-            ctx = ctx.lis_statements()
-        result.append(self.visit(ctx.statements()))
-        return result
+    #lis_stmt
+        if ctx.lis_statements():
+            return [self.visit(ctx.statements())] + self.visit(ctx.lis_statements())
+        else:
+            return [self.visit(ctx.statements())]
 
     def visitWithstatements(self, ctx:MPParser.WithstatementsContext):
     #withstatements: WITH varlist_dec DO statements
-        result = [self.visit(ctx.varlist_dec())]
-        return With(result,self.visit(ctx.statements()))
+        result = self.visit(ctx.varlist_dec())
+        stmt = self.visit(ctx.statements())
+        if not isinstance(stmt,list): 
+            stmt = [stmt]
+        stmt = [str(x) for x in stmt]
+        return With(result,stmt)
+ 
 
     def visitCallstatements(self, ctx:MPParser.CallstatementsContext):
     #callstatements: funcall SEMI 
         ctx = ctx.funcall()
         return CallStmt(Id(ctx.ID().getText()),self.visit(ctx.listexp()))
-

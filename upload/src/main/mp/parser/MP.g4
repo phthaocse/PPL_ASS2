@@ -314,7 +314,7 @@ assignstatement: (variable ASSIGN)+ expression SEMI ;
 
 variable: ID | arrayelement;
 
-ifstatement: IF expression THEN lis_statements (: ELSE lis_statements)? ;
+ifstatement: IF expression THEN statements ( ELSE statements)? ;
 
 whilestatement: WHILE expression DO  statements ;
 
