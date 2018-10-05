@@ -114,7 +114,7 @@ class ASTGeneration(MPVisitor):
         elif ctx.FLOATLIT():           
             return FloatLiteral(float(ctx.FLOATLIT().getText()))
         elif ctx.BOOL_LIT():
-            return BooleanLiteral(self.toBool(ctx.BOOL_LIT().getText()))
+            return BooleanLiteral(ctx.BOOL_LIT().getText())
         else: 
             return StringLiteral(ctx.STRING_LIT().getText())
 
@@ -351,8 +351,11 @@ class ASTGeneration(MPVisitor):
 
     def visitWhilestatement(self, ctx:MPParser.WhilestatementContext):
     #whilestatement: WHILE expression DO  statements 
-        return While(self.visit(ctx.expression()),[self.visit(ctx.statements())])
-
+        result = self.visit(ctx.statements())
+        if result: 
+            if not isinstance(result,list):
+                return While(self.visit(ctx.expression()),[result])
+        return While(self.visit(ctx.expression()),result)
     def visitForstatement(self, ctx:MPParser.ForstatementContext):
     #forstatement: FOR ID ASSIGN initialExp (TO | DOWNTO) finalExp DO statements 
         result = self.visit(ctx.statements())
