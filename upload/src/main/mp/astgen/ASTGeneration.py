@@ -279,17 +279,15 @@ class ASTGeneration(MPVisitor):
 
     def visitListexp(self, ctx:MPParser.ListexpContext):
     #listexp: expression COMMA listexp | expression
-        result = [] #list store exp (listexp)
-        while ctx.getChildCount() != 1:
-            result.insert(len(result),self.visit(ctx.expression()))
-            ctx = ctx.listexp() 
-        result.insert(len(result),self.visit(ctx.expression()))
-        return result
+     #list store exp (listexp)
+        if ctx.listexp():
+            return [self.visit(ctx.expression())] + self.visit(ctx.listexp())
+        else:
+            return [self.visit(ctx.expression())]
 
     def visitCompoundStatement(self, ctx:MPParser.CompoundStatementContext):
     #compoundStatement: BEGIN (lis_statements)? END 
         if ctx.lis_statements():
-            print("compound")
             return self.visit(ctx.lis_statements())
         else: 
             return []
@@ -312,19 +310,16 @@ class ASTGeneration(MPVisitor):
             result = self.visitChildren(ctx)   
             for i in range(1,len(result)):
                 result[0] = str(result[0]) + "," + str(result[i]) 
-            return result[0]
- 
+            return result[0] 
         else:
             return self.visitChildren(ctx)   
 
     def visitAssignstatement(self, ctx:MPParser.AssignstatementContext):
     #assignstatement: (variable ASSIGN)+ expression SEMI 
         exp = self.visit(ctx.expression())
-        if isinstance(ctx.variable(),list):
-            print ("true")
-        else:
-            print ("false")
-        result =  [Assign(self.visit(x),exp) for x in ctx.variable()]
+        lisvar = ctx.variable()[::-1] #reserve list
+        lisvarnext = lisvar[1:]
+        result = [Assign(self.visit(lisvar[0]),exp)] + [Assign(self.visit(y),self.visit(x)) for x,y in zip(lisvar,lisvarnext)]
         print("re:",[str(x) for x in result])
 #         for i in range(1,len(result)):
 #           result[0] = str(result[0]) + "," + str(result[i]) 
@@ -414,4 +409,7 @@ class ASTGeneration(MPVisitor):
     def visitCallstatements(self, ctx:MPParser.CallstatementsContext):
     #callstatements: funcall SEMI 
         ctx = ctx.funcall()
-        return CallStmt(Id(ctx.ID().getText()),self.visit(ctx.listexp()))
+        if ctx.listexp():
+            return CallStmt(Id(ctx.ID().getText()),self.visit(ctx.listexp()))
+        else:
+            return CallStmt(Id(ctx.ID().getText()),[])
