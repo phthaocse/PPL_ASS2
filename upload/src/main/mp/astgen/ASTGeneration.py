@@ -55,7 +55,6 @@ class ASTGeneration(MPVisitor):
 
     def visitFun_dec(self, ctx:MPParser.Fun_decContext):
     #  fun_dec: FUNCTION ID LB paralist RB COLON types SEMI (var_dec)? compoundStatement
-        print("Fun_dec")
         para = self.visit(ctx.paralist())
         cpstmt = self.visit(ctx.compoundStatement())
 
@@ -85,30 +84,26 @@ class ASTGeneration(MPVisitor):
                         cpstmt)
     def visitParalist(self, ctx:MPParser.ParalistContext):
     #paralist: para_dec SEMI paralist | (para_dec)? 
-        result = [] #list store para_dec
-        if ctx.getChildCount() == 0:
-            return result
-        while ctx.getChildCount() != 1:
-            result.append(self.visit(ctx.para_dec()))
-            ctx = ctx.paralist()
-        result.append(self.visit(ctx.para_dec()))
-        return result 
+
+        if ctx.paralist():
+            return self.visit(ctx.para_dec()) + self.visit(ctx.paralist()) 
+        elif ctx.para_dec():
+            return self.visit(ctx.para_dec())
+        else:
+            return []
 
     def visitPara_dec(self, ctx:MPParser.Para_decContext):
     #para_dec: idlist COLON types
         id_l = self.visit(ctx.idlist())
         types = self.visit(ctx.types())
-        result = [VarDecl(Id(x),types) for x in id_l]
-        for i in range(1,len(result)):
-            result[0] = str(result[0]) + "," + str(result[i])
-        return result[0]
+        return [VarDecl(Id(x),types) for x in id_l]
+
 
     def visitTypes(self, ctx:MPParser.TypesContext):
     #types: primitive_types| compound_type 
         return self.visitChildren(ctx)
 
     def visitLiterals(self, ctx:MPParser.LiteralsContext):
-        print("Lit")
         if ctx.INTLIT():
             return IntLiteral(int(ctx.INTLIT().getText()))
         elif ctx.FLOATLIT():           
@@ -138,7 +133,6 @@ class ASTGeneration(MPVisitor):
 
     def visitArray_dec(self, ctx:MPParser.Array_decContext):
     #array_dec: ARRAY LSB SUB? INTLIT DD2 SUB? INTLIT RSB OF primitive_types 
-        print("Array_dec")
         lower = int(ctx.INTLIT(0).getText())
         uper = int(ctx.INTLIT(1).getText())
         types = self.visit(ctx.primitive_types())
@@ -147,9 +141,7 @@ class ASTGeneration(MPVisitor):
             lower = "-" + str(lower) 
         if ctx.SUB(1):
             uper = "-" + str(uper)
-        print(lower)
-        print(uper)
-        print(types)
+
         return ArrayType(lower,uper,types)
  
     """operand
@@ -320,7 +312,6 @@ class ASTGeneration(MPVisitor):
         lisvar = ctx.variable()[::-1] #reserve list
         lisvarnext = lisvar[1:]
         result = [Assign(self.visit(lisvar[0]),exp)] + [Assign(self.visit(y),self.visit(x)) for x,y in zip(lisvar,lisvarnext)]
-        print("re:",[str(x) for x in result])
 #         for i in range(1,len(result)):
 #           result[0] = str(result[0]) + "," + str(result[i]) 
         return [str(x) for x in result]
@@ -338,12 +329,10 @@ class ASTGeneration(MPVisitor):
         thenstmt = self.visit(ctx.statements(0))
         if not isinstance(thenstmt,list):
             thenstmt = [thenstmt]
-        print("thenstmt ",  [str(x) for x in thenstmt])
         if ctx.statements(1):
             elsestmt = self.visit(ctx.statements(1))
             if not isinstance(elsestmt,list):
                 elsestmt = [elsestmt]
-            print("elsestmt ",  [str(x) for x in elsestmt])
             return If(self.visit(ctx.expression()),thenstmt,elsestmt)
         return If(self.visit(ctx.expression()),thenstmt)
 
